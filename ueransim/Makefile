@@ -1,0 +1,9 @@
+DOCKER_IMAGE_OWNER = 'juan0125'
+DOCKER_IMAGE_NAME = 'ueransim'
+DOCKER_IMAGE_TAG = 'latest'
+
+.PHONY: ueransim
+base:
+	docker build -t ${DOCKER_IMAGE_OWNER}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} .
+	docker image ls ${DOCKER_IMAGE_OWNER}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+

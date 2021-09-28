@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  ueransim-gnb1:
+    container_name: ueransim-gnb1
+    image: juan0125/ueransim:latest
+    command: ./build/nr-gnb -c ./config/free5gc-gnb.yaml
+    #stdin_open: true
+    #tty: true
+    #    command: /bin/bash
+    volumes:
+      - ./src/UERANSIM/config:/UERANSIM/config
+    cap_add:
+      - ALL
+    privileged: true
+    networks:
+      privnet:
+        aliases:
+          - gnb1.ueransim.org
+        ipv4_address: 10.100.200.100
+
+  ueransim-ue1:
+    container_name: ueransim-ue1
+    image: juan0125/ueransim:latest
+    command: ./build/nr-ue -c ./config/free5gc-ue.yaml
+    volumes:
+      - ./src/UERANSIM/config:/UERANSIM/config
+    cap_add:
+      - ALL
+    privileged: true
+    networks:
+      privnet:
+        aliases:
+          - ue1.ueransim.org
+    depends_on:
+      - ueransim-gnb1
+
+#This is for using a pre-existing network
+#networks:
+        #  default:
+        #    external: true
+        #    name: free5gc-compose_privnet
+
+
+#This is for using a pre-existing network
+networks:
+  privnet:
+    external: true
+    name: free5gc-compose_privnet
+
+
