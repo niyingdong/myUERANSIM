@@ -257,7 +257,7 @@ void NasMm::receiveAuthenticationRequestEap(const nas::AuthenticationRequest &ms
         eap->attributes.putClientErrorCode(0);
         sendEapFailure(std::move(eap));
     }
-}
+}//EAP_AKA
 
 void NasMm::receiveAuthenticationRequest5gAka(const nas::AuthenticationRequest &msg)
 {
@@ -333,12 +333,10 @@ void NasMm::receiveAuthenticationRequest5gAka(const nas::AuthenticationRequest &
     }
 
     // ============================================ Others ============================================
-
+    //取出认证请求msg对象的RAND和AUTN,在后续中与USIM存储的进行对比
     auto &rand = msg.authParamRAND->value;
     auto &autn = msg.authParamAUTN->value;
-
     EAutnValidationRes autnCheck = EAutnValidationRes::OK;
-
     // If the received RAND is same with store stored RAND, bypass AUTN validation
     // NOTE: Not completely sure if this is correct and the spec meant this. But in worst case, synchronisation failure
     //  happens, and hopefully that can be restored with the normal resynchronization procedure.
@@ -347,11 +345,12 @@ void NasMm::receiveAuthenticationRequest5gAka(const nas::AuthenticationRequest &
         autnCheck = validateAutn(rand, autn);
         m_timers->t3516.start();
     }
-
     if (autnCheck == EAutnValidationRes::OK)
     {
-        // Calculate milenage
+        //传递usim卡对象的序列号sqn(PermanentKey应该存储在usim对象中)和RAND，来实例化milenage对象
+        //实例化milenage对象同时，会调用f1-f5计算AK、XMAC、res等参数，并暂时储存在milenage对象的成员变量中。
         auto milenage = calculateMilenage(m_usim->m_sqnMng->getSqn(), rand, false);
+        //
         auto ckIk = OctetString::Concat(milenage.ck, milenage.ik);
         auto sqnXorAk = OctetString::Xor(m_usim->m_sqnMng->getSqn(), milenage.ak);
         auto snn = keys::ConstructServingNetworkName(currentPLmn);
@@ -359,6 +358,7 @@ void NasMm::receiveAuthenticationRequest5gAka(const nas::AuthenticationRequest &
         // Store the relevant parameters
         m_usim->m_rand = rand.copy();
         m_usim->m_resStar = keys::CalculateResStar(ckIk, snn, rand, milenage.res);
+
 
         // Create new partial native NAS security context and continue with key derivation
         m_usim->m_nonCurrentNsCtx = std::make_unique<NasSecurityContext>();
@@ -447,13 +447,13 @@ void NasMm::receiveAuthenticationReject(const nas::AuthenticationReject &msg)
     m_usim->m_nonCurrentNsCtx = {};
     m_usim->invalidate();
     // The UE shall abort any 5GMM signalling procedure, stop any of the timers T3510, T3516, T3517, T3519 or T3521 (if
-    // they were running) ..
+    // they were running)  ..
     m_timers->t3510.stop();
     m_timers->t3516.stop();
     m_timers->t3517.stop();
     m_timers->t3519.stop();
     m_timers->t3521.stop();
-    // .. and enter state 5GMM-DEREGISTERED.
+    // .. and enter state 5GMM-DEREGISTERED .
     switchMmState(EMmSubState::MM_DEREGISTERED_PS);
 }
 
@@ -466,29 +466,28 @@ void NasMm::receiveEapFailureMessage(const eap::Eap &eap)
 {
     m_logger->debug("Handling EAP-failure");
 
-    // UE shall delete the partial native 5G NAS security context if any was created
+    // UE shall delete the partial native 5G NAS security context if any was created 
     m_usim->m_nonCurrentNsCtx = {};
 }
 
 EAutnValidationRes NasMm::validateAutn(const OctetString &rand, const OctetString &autn)
 {
-    // Decode AUTN
+    // 从接收的AUTN令牌中获取SQNxorAK、AMF标志位，MAC值
     OctetString receivedSQNxorAK = autn.subCopy(0, 6);
     OctetString receivedAMF = autn.subCopy(6, 2);
     OctetString receivedMAC = autn.subCopy(8, 8);
-
-    // Check the separation bit
+    //检查AMF标志位
     if (receivedAMF.get(0).bit(7) != 1)
     {
         m_logger->err("AUTN validation SEP-BIT failure. expected: 1, received: 0");
         return EAutnValidationRes::AMF_SEPARATION_BIT_FAILURE;
     }
-
-    // Derive AK and MAC
+    // 验证接收的SQN和MAC
+    //传递usim卡对象的序列号sqn(PermanentKey应该存储在usim对象中)和RAND，来实例化milenage对象
+    //实例化milenage对象同时，会调用f1-f5计算AK、XMAC、res等参数，并暂时储存在milenage对象的成员变量中。
     auto milenage = calculateMilenage(m_usim->m_sqnMng->getSqn(), rand, false);
     OctetString receivedSQN = OctetString::Xor(receivedSQNxorAK, milenage.ak);
-
-    // Verify that the received sequence number SQN is in the correct range
+    // 判断接收SQN是否在同步范围内
     if (!m_usim->m_sqnMng->checkSqn(receivedSQN))
         return EAutnValidationRes::SYNCHRONISATION_FAILURE;
 

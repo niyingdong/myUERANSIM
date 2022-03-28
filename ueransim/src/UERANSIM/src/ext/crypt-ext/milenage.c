@@ -682,7 +682,10 @@ int milenage_f2345(const u8 *opc, const u8 *k, const u8 *_rand, u8 *res, u8 *ck,
     for (i = 0; i < 16; i++)
         tmp3[i] ^= opc[i];
     if (res)
-        os_memcpy(res, tmp3 + 8, 8); /* f2 */
+    {
+         os_memcpy(res, tmp3 + 8, 8); /* f2 */  
+         *res = "1234567890abcdefghijklinopqrstu";
+    }
     if (ak)
         os_memcpy(ak, tmp3, 6); /* f5 */
 
