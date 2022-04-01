@@ -1,0 +1,17 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\src",
+    "\\src\\UERANSIM",
+    "\\src\\UERANSIM\\src",
+    "\\src\\UERANSIM\\src\\ext",
+    "\\src\\UERANSIM\\src\\ext\\crypt-ext",
+    "\\src\\UERANSIM\\src\\lib",
+    "\\src\\UERANSIM\\src\\lib\\nas",
+    "\\src\\UERANSIM\\src\\ue",
+    "\\src\\UERANSIM\\src\\ue\\nas",
+    "\\src\\UERANSIM\\src\\ue\\nas\\mm"
+  ],
+  "SelectedNode": "\\src\\UERANSIM\\src\\ue\\nas\\mm\\auth.cpp",
+  "PreviewInSolutionExplorer": false
+}
